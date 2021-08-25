@@ -335,6 +335,25 @@ my_data <- list(
 	W = 4
 	)
 
+library(cmdstanr)
+
+m2_stan <- cmdstan_model("STAN/integrated_model_simplified.stan")
+my_data$npar_det <- dim(my_data$v)[[2]]
+my_data$npar_state <- dim(my_data$x_s)[[2]]
+my_data$npar_thin <- dim(my_data$h_s)[[2]]
+
+stanm2_fit <- m2_stan$sample(data = my_data, chains = 4, 
+               parallel_chains = 4,iter_warmup = 1000, iter_sampling = 1000)
+dras <- stanm2_fit$draws()
+bayesplot::mcmc_trace(dras,pars = c("a", "beta", "cc", "zsum"))
+
+st_full <- stanm2_fit$summary()
+stsum <- stanm2_fit$summary(variables = c("beta", "cc", "a", "zsum"))
+stsum
+dplyr::filter(stsum, grepl(c("beta|cc|^a|zsum"), variable))
+dplyr::filter(st_full, grepl("psi", variable)) %>% pull(median) %>% rethinking::dens()
+dplyr::filter(st_full, grepl("z\\[", variable)) %>% pull(median) %>% table
+
 m2 <- run.jags(
   model = "./JAGS/integrated_model.R", 
   data = my_data, 
@@ -348,6 +367,25 @@ m2 <- run.jags(
   modules = "glm",
   method = 'parallel'
 )
+
+summary(m2)
+readr::write_rds(m2, "jags_par.rds")
+readr::write_rds(stsum, "stan_par.rds")
+
+diff1 <- 
+summary(m2) %>% as_tibble(rownames = "variable") %>% janitor::clean_names() %>% 
+  mutate(software="jags",q5 = lower95, q95=upper95,
+         variable = stringr::str_replace(variable, "^a","a[1]" )) %>% 
+  bind_rows(stsum %>% mutate(software='stan')) 
+   
+p1 <- diff1 %>% 
+  filter(variable!="zsum")  %>% 
+  ggplot(aes(variable, median, colour= software, shape = software)) + 
+  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) ) 
+  facet_grid(variable~., scales='free')
+  
+
+ggplot(stsum)
 
 
 ##########################
