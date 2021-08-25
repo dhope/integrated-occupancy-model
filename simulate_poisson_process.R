@@ -371,7 +371,7 @@ m2 <- run.jags(
 summary(m2)
 readr::write_rds(m2, "jags_par.rds")
 readr::write_rds(stsum, "stan_par.rds")
-
+theme_set(theme_dark())
 diff1 <- 
 summary(m2) %>% as_tibble(rownames = "variable") %>% janitor::clean_names() %>% 
   mutate(software="jags",q5 = lower95, q95=upper95,
@@ -381,11 +381,23 @@ summary(m2) %>% as_tibble(rownames = "variable") %>% janitor::clean_names() %>%
 p1 <- diff1 %>% 
   filter(variable!="zsum")  %>% 
   ggplot(aes(variable, median, colour= software, shape = software)) + 
-  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) ) 
-  facet_grid(variable~., scales='free')
+  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) )  +
+  # facet_grid(variable~., scales='free') +
+    scale_colour_viridis_d() +
+  labs(x = "Variable", y = "Estimate")
   
+p2 <- diff1 %>% 
+  filter(variable=="zsum")  %>% 
+  ggplot(aes(variable, median, colour= software, shape = software)) + 
+  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) )  +
+  scale_colour_viridis_d()+
+  labs(x = "", y = "Estimate")
 
-ggplot(stsum)
+
+library(patchwork)
+p1+p2 + patchwork::plot_layout(widths = c(0.9,0.1),guides = 'collect' ) +
+  plot_annotation()
+
 
 
 ##########################
