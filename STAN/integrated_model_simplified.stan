@@ -19,6 +19,30 @@ data{
   
   
 }
+
+transformed data{
+  int obs_pa_po[npixel];
+  for(prr in 1:npixel){
+    int obs = 0;
+    for(po in 1:m){
+      if(po_pixel[po] == prr ){
+          obs =1;
+          }
+      }
+      if(obs == 0){
+        for(pa in 1:nsite){
+          if(pa_pixel[pa]==prr){
+          if (y[pa] > 0) {
+            obs =1;
+            }
+          }
+        }
+        }
+      obs_pa_po[prr] = obs;
+  }
+}
+  
+
 parameters{
   vector[npar_det] a;  //det/non-det data model regression coefficients
   vector[npar_state] beta; //latent state model regression coefficients
@@ -76,7 +100,12 @@ generated quantities{
   // # Derived parameter, the number of cells occupied
   real zsum;
   vector[npixel] z;
-  for (p in 1:npixel) z[p] = bernoulli_rng(psi[p]);
+  for (p in 1:npixel) {
+      if(obs_pa_po[p] == 1){z[p] = 1;} else{
+        z[p] = bernoulli_rng(psi[p]);
+      }
+  }
+    
   zsum = sum(z);
 
 }

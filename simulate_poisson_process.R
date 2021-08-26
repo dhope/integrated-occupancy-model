@@ -334,25 +334,10 @@ my_data <- list(
 	# Number of repeat surveys,
 	W = 4
 	)
-
-library(cmdstanr)
-
-m2_stan <- cmdstan_model("STAN/integrated_model_simplified.stan")
 my_data$npar_det <- dim(my_data$v)[[2]]
 my_data$npar_state <- dim(my_data$x_s)[[2]]
 my_data$npar_thin <- dim(my_data$h_s)[[2]]
-
-stanm2_fit <- m2_stan$sample(data = my_data, chains = 4, 
-               parallel_chains = 4,iter_warmup = 1000, iter_sampling = 1000)
-dras <- stanm2_fit$draws()
-bayesplot::mcmc_trace(dras,pars = c("a", "beta", "cc", "zsum"))
-
-st_full <- stanm2_fit$summary()
-stsum <- stanm2_fit$summary(variables = c("beta", "cc", "a", "zsum"))
-stsum
-dplyr::filter(stsum, grepl(c("beta|cc|^a|zsum"), variable))
-dplyr::filter(st_full, grepl("psi", variable)) %>% pull(median) %>% rethinking::dens()
-dplyr::filter(st_full, grepl("z\\[", variable)) %>% pull(median) %>% table
+# readr::write_rds(my_data, "rds/my_data.rds")
 
 m2 <- run.jags(
   model = "./JAGS/integrated_model.R", 
@@ -369,36 +354,7 @@ m2 <- run.jags(
 )
 
 summary(m2)
-readr::write_rds(m2, "jags_par.rds")
-readr::write_rds(stsum, "stan_par.rds")
-theme_set(theme_dark())
-diff1 <- 
-summary(m2) %>% as_tibble(rownames = "variable") %>% janitor::clean_names() %>% 
-  mutate(software="jags",q5 = lower95, q95=upper95,
-         variable = stringr::str_replace(variable, "^a","a[1]" )) %>% 
-  bind_rows(stsum %>% mutate(software='stan')) 
-   
-p1 <- diff1 %>% 
-  filter(variable!="zsum")  %>% 
-  ggplot(aes(variable, median, colour= software, shape = software)) + 
-  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) )  +
-  # facet_grid(variable~., scales='free') +
-    scale_colour_viridis_d() +
-  labs(x = "Variable", y = "Estimate")
-  
-p2 <- diff1 %>% 
-  filter(variable=="zsum")  %>% 
-  ggplot(aes(variable, median, colour= software, shape = software)) + 
-  geom_pointrange(aes(ymin=q5, ymax=q95), position = position_dodge(width = 0.2) )  +
-  scale_colour_viridis_d()+
-  labs(x = "", y = "Estimate")
-
-
-library(patchwork)
-p1+p2 + patchwork::plot_layout(widths = c(0.9,0.1),guides = 'collect' ) +
-  plot_annotation()
-
-
+readr::write_rds(summary(m2), "rds/jags_par.rds")
 
 ##########################
 # summarize the two models
