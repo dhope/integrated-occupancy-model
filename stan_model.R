@@ -28,12 +28,16 @@ dplyr::filter(st_full, grepl("z\\[", variable)) %>% pull(median) %>% table
 
 r <- agg_plane$x
 values(r) <-    dplyr::filter(st_full, grepl("z\\[", variable)) %>% pull(median) 
+values(r) <-    dplyr::filter(st_full, grepl("psi\\[", variable)) %>% pull(median) 
+values(r) <-    dplyr::filter(st_full, grepl("psi\\[", variable)) %>% pull(mad) 
+values(r) <-    dplyr::filter(st_full, grepl("psi\\[", variable)) %>% 
+  mutate(cv = mad / median) %>% 
+  pull(cv) 
 plot(r)
-calc(agg_plane$x, dplyr::filter(st_full, grepl("z\\[", variable)) %>% pull(median) )
 
 
-
-readr::write_rds(stsum, "stan_par.rds")
+library(tidyverse)
+# readr::write_rds(stsum, "stan_par.rds")
 theme_set(theme_dark())
 diff1 <- 
   m2 %>% as_tibble(rownames = "variable") %>% janitor::clean_names() %>% 

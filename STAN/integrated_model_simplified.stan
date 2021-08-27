@@ -98,11 +98,22 @@ model{
 
 generated quantities{
   // # Derived parameter, the number of cells occupied
+  vector[npixel] lp_present; // [z=1][y=0 | z=1] / [y=0] on a log scale
+//   One key tweak here: setting z=1 when known, and drawing from the posterior of z if unknown:
+// [z | data, params] = [data | z, params] * [z | params] / \sum_{z=0}^1  [data | z, params] * [z | params]
+  // https://github.com/mbjoseph/scr-stan/blob/master/ch07/individual-heterogeneity-ranefs.stan#L84-L91
   real zsum;
-  vector[npixel] z;
+  int z[npixel];
   for (p in 1:npixel) {
-      if(obs_pa_po[p] == 1){z[p] = 1;} else{
-        z[p] = bernoulli_rng(psi[p]);
+      if(obs_pa_po[p]){
+        z[p] = 1;
+        } else{
+          lp_present[p] = log(psi[p]) - 
+          log_sum_exp(log(psi[p]) ,
+                  bernoulli_lpmf(0| psi[p] ) );
+                // log_sum_exp(psi[p],
+                // bernoulli_lpmf(0|  ))
+        z[p] = bernoulli_rng(exp(lp_present[p]));
       }
   }
     
